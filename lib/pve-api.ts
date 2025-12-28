@@ -1,12 +1,12 @@
 // PVE 运营中心 API 客户端
 // 用于 Web3 会员中心调用 PVE 的统一数据 API
+// 已更新：包含 7 个新功能模块
 
 const PVE_API_BASE = 'https://v0-pve-operations-center.vercel.app';
 
 class PVEApiClient {
   private token: string | null = null;
 
-  // 设置 token
   setToken(token: string) {
     this.token = token;
     if (typeof window !== 'undefined') {
@@ -14,7 +14,6 @@ class PVEApiClient {
     }
   }
 
-  // 获取 token
   getToken(): string | null {
     if (!this.token && typeof window !== 'undefined') {
       this.token = localStorage.getItem('pve_token');
@@ -22,7 +21,6 @@ class PVEApiClient {
     return this.token;
   }
 
-  // 登录 PVE
   async login(username: string, password: string) {
     const response = await fetch(`${PVE_API_BASE}/api/admin/auth/login`, {
       method: 'POST',
@@ -42,7 +40,6 @@ class PVEApiClient {
     throw new Error(data.error || 'Login failed');
   }
 
-  // 通用 API 调用
   async request(endpoint: string, options: RequestInit = {}) {
     const token = this.getToken();
     
@@ -56,7 +53,6 @@ class PVEApiClient {
     });
 
     if (response.status === 401) {
-      // Token 过期，需要重新登录
       this.token = null;
       if (typeof window !== 'undefined') {
         localStorage.removeItem('pve_token');
@@ -69,17 +65,14 @@ class PVEApiClient {
 
   // === PVE 核心 API ===
 
-  // 获取钱包列表
   async getWallets(page = 1, limit = 100) {
     return this.request(`/api/admin/wallets?page=${page}&limit=${limit}`);
   }
 
-  // 获取节点列表
   async getNodes() {
     return this.request('/api/admin/nodes');
   }
 
-  // 获取交易记录
   async getTransactions(walletAddress?: string) {
     const params = walletAddress ? `?wallet_address=${walletAddress}` : '';
     return this.request(`/api/admin/transactions${params}`);
@@ -87,39 +80,104 @@ class PVEApiClient {
 
   // === Web3 会员中心 API ===
 
-  // 获取层级关系
   async getHierarchy() {
     return this.request('/api/admin/hierarchy');
   }
 
-  // 获取佣金记录
   async getCommissionRecords() {
     return this.request('/api/admin/commission-records');
   }
 
-  // 获取会员等级配置
   async getMemberLevelConfig() {
     return this.request('/api/admin/member-level-config');
   }
 
-  // 获取分配记录
   async getAssignedRecords() {
     return this.request('/api/admin/assigned-records');
   }
 
-  // 获取质押记录
   async getStakingRecords() {
     return this.request('/api/admin/staking-records');
   }
 
-  // 获取操作日志
   async getOperationLogs() {
     return this.request('/api/admin/operation-logs');
   }
 
+  // === 新增功能 API ===
+
+  // 云节点购买
+  async getCloudNodePurchases() {
+    return this.request('/api/admin/cloud-node-purchases');
+  }
+
+  async createCloudNodePurchase(data: any) {
+    return this.create('/api/admin/cloud-node-purchases', data);
+  }
+
+  // 镜像节点购买
+  async getImageNodePurchases() {
+    return this.request('/api/admin/image-node-purchases');
+  }
+
+  async createImageNodePurchase(data: any) {
+    return this.create('/api/admin/image-node-purchases', data);
+  }
+
+  // 市场挂单
+  async getMarketplaceListings(status?: string) {
+    const params = status ? `?status=${status}` : '';
+    return this.request(`/api/admin/marketplace-listings${params}`);
+  }
+
+  async createMarketplaceListing(data: any) {
+    return this.create('/api/admin/marketplace-listings', data);
+  }
+
+  // 市场交易
+  async getMarketplaceTransactions() {
+    return this.request('/api/admin/marketplace-transactions');
+  }
+
+  async createMarketplaceTransaction(data: any) {
+    return this.create('/api/admin/marketplace-transactions', data);
+  }
+
+  // ASHVA 价格历史
+  async getAshvaPriceHistory(limit?: number) {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/api/admin/ashva-price-history${params}`);
+  }
+
+  async addAshvaPrice(data: any) {
+    return this.create('/api/admin/ashva-price-history', data);
+  }
+
+  // 系统日志
+  async getSystemLogs(eventType?: string) {
+    const params = eventType ? `?event_type=${eventType}` : '';
+    return this.request(`/api/admin/system-logs${params}`);
+  }
+
+  async createSystemLog(data: any) {
+    return this.create('/api/admin/system-logs', data);
+  }
+
+  // 用户管理
+  async getUsers() {
+    return this.request('/api/admin/users');
+  }
+
+  async createUser(data: any) {
+    return this.create('/api/admin/users', data);
+  }
+
+  async updateUser(data: any) {
+    return this.update('/api/admin/users', data);
+  }
+
   // === 通用 CRUD 方法 ===
 
-  // 创建记录
   async create(endpoint: string, data: any) {
     return this.request(endpoint, {
       method: 'POST',
@@ -127,7 +185,6 @@ class PVEApiClient {
     });
   }
 
-  // 更新记录
   async update(endpoint: string, data: any) {
     return this.request(endpoint, {
       method: 'PUT',
@@ -135,7 +192,6 @@ class PVEApiClient {
     });
   }
 
-  // 删除记录
   async delete(endpoint: string, id: number) {
     return this.request(`${endpoint}?id=${id}`, {
       method: 'DELETE',
@@ -146,7 +202,7 @@ class PVEApiClient {
 // 导出单例
 export const pveApi = new PVEApiClient();
 
-// 自动登录（使用默认管理员账号）
+// 自动登录
 export async function ensurePVEAuth() {
   if (!pveApi.getToken()) {
     try {
